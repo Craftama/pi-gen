@@ -85,8 +85,10 @@ run_stage(){
 	unmount ${WORK_DIR}/${STAGE}
 	STAGE_WORK_DIR=${WORK_DIR}/${STAGE}
 	ROOTFS_DIR=${STAGE_WORK_DIR}/rootfs
-	if [ -f ${STAGE_DIR}/EXPORT_IMAGE ]; then
-		EXPORT_DIRS="${EXPORT_DIRS} ${STAGE_DIR}"
+	if [ ! -f SKIP_IMAGES ]; then
+		if [ -f ${STAGE_DIR}/EXPORT_IMAGE ]; then
+			EXPORT_DIRS="${EXPORT_DIRS} ${STAGE_DIR}"
+		fi
 	fi
 	if [ ! -f SKIP ]; then
 		if [ "${CLEAN}" = "1" ]; then
@@ -119,6 +121,7 @@ if [ "$(id -u)" != "0" ]; then
 	exit 1
 fi
 
+
 if [ -f config ]; then
 	source config
 fi
@@ -128,7 +131,8 @@ if [ -z "${IMG_NAME}" ]; then
 	exit 1
 fi
 
-export IMG_DATE=${IMG_DATE:-"$(date -u +%Y-%m-%d)"}
+export USE_QEMU=${USE_QEMU:-0}
+export IMG_DATE=${IMG_DATE:-"$(date +%Y-%m-%d)"}
 
 export BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export SCRIPT_DIR="${BASE_DIR}/scripts"
@@ -177,10 +181,12 @@ for EXPORT_DIR in ${EXPORT_DIRS}; do
 	source "${EXPORT_DIR}/EXPORT_IMAGE"
 	EXPORT_ROOTFS_DIR=${WORK_DIR}/$(basename ${EXPORT_DIR})/rootfs
 	run_stage
-	if [ -e ${EXPORT_DIR}/EXPORT_NOOBS ]; then
-		source ${EXPORT_DIR}/EXPORT_NOOBS
-		STAGE_DIR=${BASE_DIR}/export-noobs
-		run_stage
+	if [ "${USE_QEMU}" != "1" ]; then
+		if [ -e ${EXPORT_DIR}/EXPORT_NOOBS ]; then
+			source ${EXPORT_DIR}/EXPORT_NOOBS
+			STAGE_DIR=${BASE_DIR}/export-noobs
+			run_stage
+		fi
 	fi
 done
 

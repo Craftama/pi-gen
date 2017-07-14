@@ -1,24 +1,24 @@
-Fork of `pi_gen` by [@RPI-Distro](https://github.com/RPi-Distro/pi-gen).
+# pi-gen
 
-## Building your own
-The Haspbian image is built with the same script that generates the official [Raspbian](https://www.raspberrypi.org/downloads/raspbian/) image's from the [Raspberry Pi Foundation](https://www.raspberrypi.org/about/).
-
-By default the Haspbian image is built on a Debian 8 droplet on Digital Ocean and takes about 30 minutes to build on the cheapest droplet. Dependencies and everything is handled by the build script with the exception of `git`.
-
-Since this image is based on [Raspbian](https://www.raspberrypi.org/downloads/raspbian/) it keeps the default password and username from [Raspbian](https://www.raspberrypi.org/downloads/raspbian/). Default user for use locally or over ssh is `pi` and the password is `raspberry`.
-
-Build instructions:
-- Install git. `sudo apt-get update && sudo apt-get upgrade -y && sudo apt-get install git`
-- Clone the `rpi_gen` code. `git clone https://github.com/home-assistant/pi-gen.git`
-- Create a file in the current folder named `config`. More about it's contents below.
-- Run the build script, with sudo or as root.  `sudo ./build.sh`
-- Wait ~30 minutes for build to complete.
-- Retrieve your freshly built Raspberry Pi image from the `rpi_gen\deploy` folder.
+_Tool used to create the raspberrypi.org Raspbian images_
 
 
-### Dependencies
+## Dependencies
 
-`quilt parted realpath qemu-user-static debootstrap zerofree pxz zip dosfstools bsdtar libcap2-bin grep rsync`
+pi-gen runs on Debian based operating systems. Currently it is only supported on
+either Debian Stretch or Ubuntu Xenial and is known to have issues building on
+earlier releases of these systems.
+
+To install the required dependencies for pi-gen you should run:
+
+```bash
+apt-get install quilt parted realpath qemu-user-static debootstrap zerofree pxz zip \
+dosfstools bsdtar libcap2-bin grep rsync xz-utils
+```
+
+The file `depends` contains a list of tools needed.  The format of this
+package is `<tool>[:<debian-package>]`.
+
 
 ## Config
 
@@ -28,36 +28,130 @@ environment variables.
 
 The following environment variables are supported:
 
- * `IMG_NAME`, the name of the distribution to build (required)
- * `APT_PROXY`, proxy/cache URL to be included in the build
+ * `IMG_NAME` **required** (Default: unset)
 
-A simple example for building Hassbian:
+   The name of the image to build with the current stage directories.  Setting
+   `IMG_NAME=Raspbian` is logical for an unmodified RPi-Distro/pi-gen build,
+   but you should use something else for a customized version.  Export files
+   in stages may add suffixes to `IMG_NAME`.
+
+ * `APT_PROXY` (Default: unset)
+
+   If you require the use of an apt proxy, set it here.  This proxy setting
+   will not be included in the image, making it safe to use an `apt-cacher` or
+   similar package for development.
+
+   If you have Docker installed, you can set up a local apt caching proxy to
+   like speed up subsequent builds like this:
+
+       docker-compose up -d
+       echo 'APT_PROXY=http://172.17.0.1:3142' >> config
+
+ * `BASE_DIR`  (Default: location of `build.sh`)
+
+   **CAUTION**: Currently, changing this value will probably break build.sh
+
+   Top-level directory for `pi-gen`.  Contains stage directories, build
+   scripts, and by default both work and deployment directories.
+
+ * `WORK_DIR`  (Default: `"$BASE_DIR/work"`)
+
+   Directory in which `pi-gen` builds the target system.  This value can be
+   changed if you have a suitably large, fast storage location for stages to
+   be built and cached.  Note, `WORK_DIR` stores a complete copy of the target
+   system for each build stage, amounting to tens of gigabytes in the case of
+   Raspbian.
+   
+   **CAUTION**: If your working directory is on an NTFS partition you probably won't be able to build. Make sure this is a proper Linux filesystem.
+
+ * `DEPLOY_DIR`  (Default: `"$BASE_DIR/deploy"`)
+
+   Output directory for target system images and NOOBS bundles.
+
+ * `USE_QEMU` (Default: `"0"`)
+
+   This enable the Qemu mode and set filesystem and image suffix if set to 1.
+
+
+A simple example for building Raspbian:
 
 ```bash
-IMG_NAME='Hassbian'
+IMG_NAME='Raspbian'
 ```
+
+
+## How the build process works
+
+The following process is followed to build images:
+
+ * Loop through all of the stage directories in alphanumeric order
+
+ * Move on to the next directory if this stage directory contains a file called
+   "SKIP"
+
+ * Run the script ```prerun.sh``` which is generally just used to copy the build
+   directory between stages.
+
+ * In each stage directory loop through each subdirectory and then run each of the
+   install scripts it contains, again in alphanumeric order. These need to be named
+   with a two digit padded number at the beginning.
+   There are a number of different files and directories which can be used to
+   control different parts of the build process:
+
+     - **00-run.sh** - A unix shell script. Needs to be made executable for it to run
+
+     - **00-run-chroot.sh** - A unix shell script which will be run in the chroot
+       of the image build directory. Needs to be made executable for it to run.
+
+     - **00-debconf** - Contents of this file are passed to debconf-set-selections
+       to configure things like locale, etc.
+
+     - **00-packages** - A list of packages to install. Can have more than one, space
+       separated, per line.
+
+     - **00-packages-nr** - As 00-packages, except these will be installed using
+       the ```--no-install-recommends -y``` parameters to apt-get
+
+     - **00-patches** - A directory containing patch files to be applied
+
+  * If the stage directory contains files called "EXPORT_NOOBS" or "EXPORT_IMAGE" then
+    add this stage to a list of images to generate
+
+  * Generate the images for any stages that have specified them
+
+It is recommended to examine build.sh for finer details.
+
 
 ## Docker Build
 
 ```bash
-nano config         # Edit your config file. See above.
+vi config         # Edit your config file. See above.
 ./build-docker.sh
 ```
+
 If everything goes well, your finished image will be in the `deploy/` folder.
-You can then remove the build container with `docker rm pigen_work`
+You can then remove the build container with `docker rm -v pigen_work`
 
 If something breaks along the line, you can edit the corresponding scripts, and
 continue:
 
-```
+```bash
 CONTINUE=1 ./build-docker.sh
 ```
 
-There is a possibility that even when running from a docker container, the installation of `qemu-user-static` will silently fail when building the image because `binfmt-support` _must be enabled on the underlying kernel_. An easy fix is to ensure `binfmt-support` is installed on the host machine before starting the `./build-docker.sh` script (or using your own docker build solution).
+There is a possibility that even when running from a docker container, the
+installation of `qemu-user-static` will silently fail when building the image
+because `binfmt-support` _must be enabled on the underlying kernel_. An easy
+fix is to ensure `binfmt-support` is installed on the host machine before
+starting the `./build-docker.sh` script (or using your own docker build
+solution).
 
-### Raspbian Stage Anatomy
 
-The build of Hassbian is divided up into several stages for logical clarity
+## Stage Anatomy
+
+### Raspbian Stage Overview
+
+The build of Raspbian is divided up into several stages for logical clarity
 and modularity.  This causes some initial complexity, but it simplifies
 maintenance and allows for more easy customization.
 
@@ -83,33 +177,65 @@ maintenance and allows for more easy customization.
    defaults, installs fake-hwclock and ntp, wifi and bluetooth support,
    dphys-swapfile, and other basics for managing the hardware.  It also
    creates necessary groups and gives the pi user access to sudo and the
-   standard console hardware permission groups. This stage has a minor 
-   modification to prevent ssh from being disabled.
+   standard console hardware permission groups.
 
    There are a few tools that may not make a whole lot of sense here for
-   development purposes on a minimal system such as basic python and lua
+   development purposes on a minimal system such as basic Python and Lua
    packages as well as the `build-essential` package.  They are lumped right
    in with more essential packages presently, though they need not be with
    pi-gen.  These are understandable for Raspbian's target audience, but if
-   you were looking for something between truly minimal and Raspbian-lite,
+   you were looking for something between truly minimal and Raspbian-Lite,
    here's where you start trimming.
 
- - **Stage 3** - the HASSbian stage. This is where all the Home Assistant
-   specific packages are installed, permissions are set and users created.
-   This is the only stage we add to the original build script.
+ - **Stage 3** - desktop system.  Here's where you get the full desktop system
+   with X11 and LXDE, web browsers, git for development, Raspbian custom UI
+   enhancements, etc.  This is a base desktop system, with some development
+   tools installed.
 
-   The original **Stage 4** and **Stage 5** are removed since they are not
-   used on the HASSbian image.
+ - **Stage 4** - Raspbian system meant to fit on a 4GB card.  More development
+   tools, an email client, learning tools like Scratch, specialized packages
+   like sonic-pi, system documentation, office productivity, etc.  This is the
+   stage that installs all of the things that make Raspbian friendly to new
+   users.
+
+ - **Stage 5** - The official Raspbian Desktop image. Right now only adds
+   Mathematica.
 
 ### Stage specification
-If you wish to build up to a specified stage (such as building up to stage 2 for a lite system), place an empty file named `SKIP` in each of the `./stage` directories you wish not to include.
 
-Then remove the `EXPORT*` files from `./stage3` (if building up to stage 2) and add them to `./stage2`.
+If you wish to build up to a specified stage (such as building up to stage 2
+for a lite system), place an empty file named `SKIP` in each of the `./stage`
+directories you wish not to include.
 
+Then remove the `EXPORT*` files from `./stage4` (if building up to stage 2) or
+from `./stage2` (if building a minimal system).
+
+```bash
+# Example for building a lite system
+echo "IMG_NAME='Raspbian'" > config
+touch ./stage3/SKIP ./stage4/SKIP ./stage5/SKIP
+rm stage4/EXPORT* stage5/EXPORT*
+sudo ./build.sh  # or ./build-docker.sh
 ```
-## Example for building a lite system without Home Assistant
-$ touch ./stage3/SKIP 
-$ rm stage3/EXPORT*
-$ touch stage3/EXPORT_IMAGE
-```
-If you wish to build further configurations upon (for example) the lite system, you can also delete the contents of `./stage3` and replace with your own contents in the same format.
+
+If you wish to build further configurations upon (for example) the lite
+system, you can also delete the contents of `./stage3` and `./stage4` and
+replace with your own contents in the same format.
+
+
+## Skipping stages to speed up development
+
+If you're working on a specific stage the recommended development process is as
+follows:
+
+ * Add a file called SKIP_IMAGES into the directories containing EXPORT_* files
+   (currently stage2, stage4 and stage5)
+ * Add SKIP files to the stages you don't want to build. For example, if you're
+   basing your image on the lite image you would add these to stages 3, 4 and 5.
+ * Run build.sh to build all stages
+ * Add SKIP files to the earlier successfully built stages
+ * Modify the last stage
+ * Rebuild just the last stage using ```sudo CLEAN=1 ./build.sh```
+ * Once you're happy with the image you can remove the SKIP_IMAGES files and
+   export your image to test
+
