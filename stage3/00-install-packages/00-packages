@@ -12,3 +12,15 @@ gldriver-test
 fonts-droid-fallback
 fonts-liberation2
 obconf
+python3
+python3-venv
+python3-pip
+bluetooth
+python-bluez
+libbluetooth-dev
+rng-tools
+htop
+tmux
+avahi-daemon
+libtool
+autoconf 
