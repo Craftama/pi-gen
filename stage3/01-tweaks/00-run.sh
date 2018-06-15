@@ -8,9 +8,11 @@ EOF
 
 install -v -o 1001 -g 1001 -d ${ROOTFS_DIR}/srv/homeassistant
 mkdir -p files
-wget -O ./files/hassbian-scripts-0.6.deb https://github.com/home-assistant/hassbian-scripts/releases/download/v0.6/hassbian-scripts_0.6.deb
-install -v -m 600 ./files/hassbian-scripts-0.6.deb ${ROOTFS_DIR}/srv/homeassistant/
-
+cd /tmp
+curl https://api.github.com/repos/home-assistant/hassbian-scripts/releases/latest | grep "browser_download_url.*deb" | cut -d : -f 2,3 | tr -d \" | wget -qi -
+HASSBIAN_PACKAGE=$(ls /tmp| grep 'hassbian*')
+install -v -m 600 /tmp/$HASSBIAN_PACKAGE ${ROOTFS_DIR}/srv/homeassistant/
+rm $HASSBIAN_PACKAGE
 
 on_chroot << EOF
 wget https://www.python.org/ftp/python/3.6.5/Python-3.6.5.tar.xz
