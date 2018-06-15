@@ -11,6 +11,24 @@ mkdir -p files
 wget -O ./files/hassbian-scripts-0.6.deb https://github.com/home-assistant/hassbian-scripts/releases/download/v0.6/hassbian-scripts_0.6.deb
 install -v -m 600 ./files/hassbian-scripts-0.6.deb ${ROOTFS_DIR}/srv/homeassistant/
 
+
+on_chroot << EOF
+wget https://www.python.org/ftp/python/3.6.5/Python-3.6.5.tar.xz
+tar xf Python-3.6.5.tar.xz
+cd Python-3.6.5
+./configure
+make
+make altinstall
+rm -r Python-3.6.5
+rm Python-3.6.5.tar.xz
+sudo apt-get --purge remove build-essential tk-dev
+sudo apt-get --purge remove libncurses5-dev libncursesw5-dev libreadline6-dev
+sudo apt-get --purge remove libdb5.3-dev libgdbm-dev libsqlite3-dev libssl-dev
+sudo apt-get --purge remove libbz2-dev libexpat1-dev liblzma-dev zlib1g-dev
+sudo apt-get autoremove
+sudo apt-get clean
+EOF
+
 on_chroot << EOF
 dpkg -i /srv/homeassistant/hassbian-scripts-0.6.deb
 EOF
