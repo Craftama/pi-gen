@@ -8,41 +8,23 @@ EOF
 
 install -v -o 1001 -g 1001 -d ${ROOTFS_DIR}/srv/homeassistant
 mkdir -p files
-cd /tmp
-curl https://api.github.com/repos/home-assistant/hassbian-scripts/releases/latest | grep "browser_download_url.*deb" | cut -d : -f 2,3 | tr -d \" | wget -qi -
-HASSBIAN_PACKAGE=$(ls /tmp| grep 'hassbian*')
-install -v -m 600 /tmp/$HASSBIAN_PACKAGE ${ROOTFS_DIR}/srv/homeassistant/
-rm $HASSBIAN_PACKAGE
 
 on_chroot << EOF
-wget https://www.python.org/ftp/python/3.6.5/Python-3.6.5.tar.xz
-tar xf Python-3.6.5.tar.xz
-cd Python-3.6.5
-./configure
-make
-make altinstall
-rm -r Python-3.6.5
-rm Python-3.6.5.tar.xz
-sudo apt-get --purge remove build-essential tk-dev
-sudo apt-get --purge remove libncurses5-dev libncursesw5-dev libreadline6-dev
-sudo apt-get --purge remove libdb5.3-dev libgdbm-dev libsqlite3-dev libssl-dev
-sudo apt-get --purge remove libbz2-dev libexpat1-dev liblzma-dev zlib1g-dev
-sudo apt-get autoremove
-sudo apt-get clean
+curl -sSL https://get.docker.com | sh
 EOF
 
-on_chroot << EOF
-dpkg -i /srv/homeassistant/hassbian-scripts-0.6.deb
-EOF
+# on_chroot << EOF
+# dpkg -i /srv/homeassistant/hassbian-scripts-0.6.deb
+# EOF
 
 # install MQTT
-on_chroot << EOF
-wget http://repo.mosquitto.org/debian/mosquitto-repo.gpg.key
-sudo apt-key add mosquitto-repo.gpg.key -y
-apt-get update
-apt-get install mosquitto
-systemctl enable mosquitto
-EOF
+# on_chroot << EOF
+# wget http://repo.mosquitto.org/debian/mosquitto-repo.gpg.key
+# sudo apt-key add mosquitto-repo.gpg.key -y
+# apt-get update
+# apt-get install mosquitto
+# systemctl enable mosquitto
+# EOF
 
 on_chroot << EOF
 sdptool add SP
@@ -66,8 +48,6 @@ echo "dtparam=i2c_arm=on" >> /boot/config.txt
 
 pip3 install -U pip setuptools
 pip3 install -r /srv/craftbox-firmware/requirements/default.txt
-
-if cat /etc/systemd/system/install_homeassistant.service; then echo "OK"; else dpkg -i /srv/homeassistant/hassbian-scripts-0.6.deb; fi
 
 chmod +x /srv/craftbox-firmware/craftbox/cli.py
 chmod +x /srv/homeassistant/craftbox-wifi-conf/run.py
@@ -99,6 +79,9 @@ cat >/etc/rc.local <<EOL
 # configure bluetooth
 echo 'power on\ndiscoverable on\nscan on\t \nquit' | bluetoothctl
 
+# install hassio
+curl -sL https://raw.githubusercontent.com/home-assistant/hassio-build/master/install/hassio_install | bash -s -- -m raspberrypi
+
 # Print the IP address
 _IP=$(hostname -I) || true
 if [ "$_IP" ]; then
@@ -121,6 +104,6 @@ for GRP in homeassistant; do
 done
 EOF
 
-on_chroot << EOF
-/opt/hassbian/suites/install_homeassistant.sh
-EOF
+# on_chroot << EOF
+# /opt/hassbian/suites/install_homeassistant.sh
+# EOF
