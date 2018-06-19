@@ -16,6 +16,7 @@ systemctl disable hwclock.sh
 systemctl disable nfs-common
 systemctl disable rpcbind
 systemctl enable regenerate_ssh_host_keys
+apt-get update
 EOF
 
 if [ "${USE_QEMU}" = "1" ]; then
