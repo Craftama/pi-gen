@@ -32,7 +32,7 @@ echo "i2c-dev" >> /etc/modules
 echo "dtparam=i2c1=on" >> /boot/config.txt
 echo "dtparam=i2c_arm=on" >> /boot/config.txt
 
-pip3 install -U pip setuptools
+pip3 install -U setuptools
 pip3 install -r /srv/craftbox-firmware/requirements/default.txt
 
 chmod +x /srv/craftbox-firmware/craftbox/cli.py
