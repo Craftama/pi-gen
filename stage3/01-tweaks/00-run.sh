@@ -19,7 +19,6 @@ sdptool add SP
 ssh-keyscan gitlab.com >> ~/.ssh/known_hosts
 ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-if cd /srv/homeassistant/craftbox-wifi-conf; then git pull; else git clone https://github.com/Craftama/rpi3-wifi-conf.git /srv/homeassistant/craftbox-wifi-conf; fi
 if cd /srv/craftbox-firmware; then git pull; else git clone https://gitlab.com/craftama/craftbox-firmware.git /srv/craftbox-firmware; fi
 
 echo "cs_CZ.UTF-8 UTF-8" >> /etc/locale.gen
@@ -37,7 +36,7 @@ pip3 install -U pip setuptools
 pip3 install -r /srv/craftbox-firmware/requirements/default.txt
 
 chmod +x /srv/craftbox-firmware/craftbox/cli.py
-chmod +x /srv/homeassistant/craftbox-wifi-conf/run.py
+
 pip3 install PyBluez wifi
 
 sed -i -- 's/ExecStart=\/usr\/lib\/bluetooth\/bluetoothd/ExecStart=\/usr\/lib\/bluetooth\/bluetoothd -C/g' /lib/systemd/system/bluetooth.service
@@ -60,6 +59,9 @@ cat >/etc/rc.local <<EOL
 
 # configure bluetooth
 echo 'power on\ndiscoverable on\nscan on\t \nquit' | bluetoothctl
+
+# disable bluetooth after 5 minutes
+(sleep 300;echo 'power off\ndiscoverable off\nscan off\t \nquit' | bluetoothctl)
 
 # start wifi configurator
 (sleep 10;PYTHONPATH=/srv/craftbox-firmware/ /srv/craftbox-firmware/craftbox/cli.py run)&
