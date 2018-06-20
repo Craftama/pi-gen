@@ -1,5 +1,5 @@
 
-#!/bin/bash -e
+#!/bin/bash -ex
 
 on_chroot << EOF
 groupadd -f -r -g 1001 homeassistant
@@ -32,6 +32,9 @@ echo "i2c-dev" >> /etc/modules
 echo "dtparam=i2c1=on" >> /boot/config.txt
 echo "dtparam=i2c_arm=on" >> /boot/config.txt
 
+# pip workaround
+wget https://bootstrap.pypa.io/get-pip.py
+python get-pip.py
 pip3 install -U setuptools
 pip3 install -r /srv/craftbox-firmware/requirements/default.txt
 
