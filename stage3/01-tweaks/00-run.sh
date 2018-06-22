@@ -41,10 +41,28 @@ pip3 install -r /srv/craftbox-firmware/requirements/default.txt
 chmod +x /srv/craftbox-firmware/craftbox/cli.py
 
 pip3 install PyBluez wifi
+python3 /srv/craftbox-firmware/setup.py install
 
 sed -i -- 's/ExecStart=\/usr\/lib\/bluetooth\/bluetoothd/ExecStart=\/usr\/lib\/bluetooth\/bluetoothd -C/g' /lib/systemd/system/bluetooth.service
 
+cat >/etc/systemd/system/craftbox.service <<EOL
+[Unit]
+Description=Craftbox firmware
+After=dbus.socket
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5s
+ExecStart=/srv/craftbox-firmware/craftbox/cli.py run
+ExecStop=/bin/kill -TERM $MAINPID
+
+[Install]
+WantedBy=multi-user.target
+EOL
+
 systemctl daemon-reload
+systemctl enable craftbox.service
 
 cat >/etc/rc.local <<EOL
 #!/bin/sh -e
@@ -65,9 +83,6 @@ echo 'power on\ndiscoverable on\nscan on\t \nquit' | bluetoothctl
 
 # disable bluetooth after 5 minutes
 (sleep 300;echo 'power off\ndiscoverable off\nscan off\t \nquit' | bluetoothctl)&
-
-# start wifi configurator
-(sleep 10;PYTHONPATH=/srv/craftbox-firmware/ /srv/craftbox-firmware/craftbox/cli.py run)&
 
 # install hassio
 curl -sL https://raw.githubusercontent.com/home-assistant/hassio-build/master/install/hassio_install | bash -s -- -m raspberrypi
