@@ -64,7 +64,7 @@ cat >/etc/rc.local <<EOL
 echo 'power on\ndiscoverable on\nscan on\t \nquit' | bluetoothctl
 
 # disable bluetooth after 5 minutes
-(sleep 300;echo 'power off\ndiscoverable off\nscan off\t \nquit' | bluetoothctl)
+(sleep 300;echo 'power off\ndiscoverable off\nscan off\t \nquit' | bluetoothctl)&
 
 # start wifi configurator
 (sleep 10;PYTHONPATH=/srv/craftbox-firmware/ /srv/craftbox-firmware/craftbox/cli.py run)&
