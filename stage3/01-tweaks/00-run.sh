@@ -55,7 +55,7 @@ After=dbus.socket
 Type=simple
 Restart=always
 RestartSec=5s
-ExecStart=/srv/craftbox-firmware/craftbox/cli.py run
+ExecStart=/usr/local/bin/craftbox run
 ExecStop=/bin/kill -TERM $MAINPID
 
 [Install]
