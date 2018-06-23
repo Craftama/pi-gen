@@ -36,13 +36,13 @@ echo "dtparam=i2c_arm=on" >> /boot/config.txt
 wget https://bootstrap.pypa.io/get-pip.py
 python get-pip.py
 pip3 install -U setuptools
+pip3 install PyBluez wifi
 pip3 install -r /srv/craftbox-firmware/requirements/default.txt
 
 chmod +x /srv/craftbox-firmware/craftbox/cli.py
 
-pip3 install PyBluez wifi
-
-cd /srv/craftbox-firmware/;python3 setup.py install
+cd /srv/craftbox-firmware/
+python3 setup.py install
 
 sed -i -- 's/ExecStart=\/usr\/lib\/bluetooth\/bluetoothd/ExecStart=\/usr\/lib\/bluetooth\/bluetoothd -C/g' /lib/systemd/system/bluetooth.service
 
