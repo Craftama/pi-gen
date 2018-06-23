@@ -41,7 +41,8 @@ pip3 install -r /srv/craftbox-firmware/requirements/default.txt
 chmod +x /srv/craftbox-firmware/craftbox/cli.py
 
 pip3 install PyBluez wifi
-python3 /srv/craftbox-firmware/setup.py install
+
+cd /srv/craftbox-firmware/;python3 setup.py install
 
 sed -i -- 's/ExecStart=\/usr\/lib\/bluetooth\/bluetoothd/ExecStart=\/usr\/lib\/bluetooth\/bluetoothd -C/g' /lib/systemd/system/bluetooth.service
 
